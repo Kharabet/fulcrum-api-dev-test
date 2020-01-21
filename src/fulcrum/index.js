@@ -6,7 +6,6 @@ export default class Fulcrum {
         this.contract = new web3.eth.Contract(iToken.abi, tokenAddresses[`i${token}`]);
     }
 
-
     async getAPR() {
         var supply_rate = await this.contract.methods.supplyInterestRate().call();
         var apr = supply_rate / 10 ** 18;
