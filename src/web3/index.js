@@ -1,5 +1,4 @@
 import Web3 from 'web3';
-import Fulcrum from '../fulcrum'
 import { iTokens } from '../fulcrum/config';
 
 import BigNumber from 'bignumber.js';
