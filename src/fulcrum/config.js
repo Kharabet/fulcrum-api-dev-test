@@ -1,18 +1,5 @@
 export const id = 'fulcrum';
 
-export const creationBlocks = {
-    'isai': 7867996,
-    'ieth': 7868400,
-    'irep': 7868617,
-    'iusdc': 7868465,
-    'iwbtc': 7868498,
-    'izrx': 7868646,
-    'iknc': 7868477,
-    'ilink': 8284446,
-    'isusd': 8946288,
-    'idai': 8957855,
-}
-
 export const iTokens = [
     { 
         name: "sai",
@@ -20,7 +7,8 @@ export const iTokens = [
         erc20Address: "0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359",
         displayName: "SAI",
         iTokenName: "iSAI",
-        decimals: 18
+        decimals: 18,
+        creationBlock: 7867996
     },
     { 
         name: "eth",
@@ -28,7 +16,8 @@ export const iTokens = [
         erc20Address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         displayName: "ETH",
         iTokenName: "iETH",
-        decimals: 18
+        decimals: 18,
+        creationBlock: 7868400
     },
     { 
         name: "rep",
@@ -36,7 +25,8 @@ export const iTokens = [
         erc20Address: "0x1985365e9f78359a9b6ad760e32412f4a445e862",
         displayName: "REP",
         iTokenName: "iREP",
-        decimals: 18
+        decimals: 18,
+        creationBlock: 7868617
     },
     { 
         name: "usdc",
@@ -44,7 +34,8 @@ export const iTokens = [
         erc20Address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
         displayName: "USDC",
         iTokenName: "iUSDC",
-        decimals: 6
+        decimals: 6,
+        creationBlock: 7868465
     },
     { 
         name: "wbtc",
@@ -52,7 +43,8 @@ export const iTokens = [
         erc20Address: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
         displayName: "WBTC",
         iTokenName: "iWBTC",
-        decimals: 8
+        decimals: 8,
+        creationBlock: 7868498
     },
     { 
         name: "zrx",
@@ -60,7 +52,8 @@ export const iTokens = [
         erc20Address: "0xe41d2489571d322189246dafa5ebde1f4699f498",
         displayName: "ZRX",
         iTokenName: "iZRX",
-        decimals: 18
+        decimals: 18,
+        creationBlock: 7868646
     },
     { 
         name: "knc",
@@ -68,7 +61,8 @@ export const iTokens = [
         erc20Address: "0xdd974d5c2e2928dea5f71b9825b8b646686bd200",
         displayName: "KNC",
         iTokenName: "iKNC",
-        decimals: 18
+        decimals: 18,
+        creationBlock: 7868477
     },
     { 
         name: "link",
@@ -76,7 +70,8 @@ export const iTokens = [
         erc20Address: "0x514910771af9ca656af840dff83e8264ecf986ca",
         displayName: "LINK",
         iTokenName: "iLINK",
-        decimals: 18
+        decimals: 18,
+        creationBlock: 8284446
     },
     { 
         name: "susd",
@@ -84,7 +79,8 @@ export const iTokens = [
         erc20Address: "0x57ab1ec28d129707052df4df418d58a2d46d5f51",
         displayName: "SUSD",
         iTokenName: "iSUSD",
-        decimals: 18
+        decimals: 18,
+        creationBlock: 8946288
     },
     { 
         name: "dai",
@@ -92,6 +88,7 @@ export const iTokens = [
         erc20Address: "0x6b175474e89094c44da98b954eedeac495271d0f",
         displayName: "DAI",
         iTokenName: "iDAI",
-        decimals: 18
+        decimals: 18,
+        creationBlock: 8957855
     }
 ]
