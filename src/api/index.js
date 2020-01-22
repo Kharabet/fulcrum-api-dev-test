@@ -7,12 +7,12 @@ export default ({ config, db }) => {
 
 	api.get('/apr', async (req, res) => {
 		var apr = await getAPR();
-		res.json({ apr: apr });
+		res.json(apr);
 	});
 	
 	api.get('/tvl', async (req, res) => {
 		var tvl = await getTVL();
-		res.json({ tvl: tvl });
+		res.json(tvl);
 	});
 
 	return api;
