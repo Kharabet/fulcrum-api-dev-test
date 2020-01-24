@@ -27,7 +27,10 @@ app.use(bodyParser.json({
 // api router
 app.use('/api', api({ config }));
 
-app.server.listen(process.env.PORT || config.port, () => {
+app.server.listen({
+    port: process.env.PORT || config.port,
+    host: '0.0.0.0'
+}, () => {
     console.log(`Started on port ${app.server.address().port}`);
 });
 
