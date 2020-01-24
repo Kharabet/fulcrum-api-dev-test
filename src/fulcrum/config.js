@@ -1,5 +1,3 @@
-export const id = 'fulcrum';
-
 export const iTokens = [
     { 
         name: "sai",

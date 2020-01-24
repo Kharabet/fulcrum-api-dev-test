@@ -7,8 +7,8 @@ import Web3 from 'web3';
 export default ({ config}) => {
 
 	let api = Router();
-	const cache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
-	var web3 = new Web3(new Web3.providers.HttpProvider('https://mainnet.infura.io/v3/090248ae4e924e70a074376505dcee8c'));
+	const cache = new NodeCache({ stdTTL: config.cache_ttl_sec, checkperiod: config.cache_ttl_sec });
+	var web3 = new Web3(new Web3.providers.HttpProvider(config.web3_provider_url));
 
 
 	var fulcrum = new Fulcrum(web3,cache);
