@@ -13,6 +13,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@babel/cli": "^7.8.3",
+    "@babel/core": "^7.8.3",
+    "@babel/node": "^7.8.3",
+    "@babel/plugin-transform-runtime": "^7.8.3",
+    "@babel/preset-env": "^7.8.3",
     "@babel/runtime": "^7.8.3",
     "bignumber.js": "^9.0.0",
     "body-parser": "^1.13.3",
@@ -25,11 +30,6 @@
     "web3": "^1.2.5-rc.0"
   },
   "devDependencies": {
-    "@babel/cli": "^7.8.3",
-    "@babel/core": "^7.8.3",
-    "@babel/node": "^7.8.3",
-    "@babel/plugin-transform-runtime": "^7.8.3",
-    "@babel/preset-env": "^7.8.3",
     "eslint": "^3.1.1",
     "nodemon": "^1.9.2"
   }
