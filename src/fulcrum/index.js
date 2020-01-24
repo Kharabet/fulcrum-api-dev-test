@@ -29,6 +29,12 @@ export default class Fulcrum {
         reserveData.forEach(item => tvl[item.token] = item.usdTotalLocked);
         return tvl;
     }
+    async getUsdRates() {
+        var reserveData = await this.getReserveData()
+        var usdRates = {};
+        reserveData.forEach(item => usdRates[item.token] = item.swapToUSDPrice);
+        return usdRates;
+    }
 
     async  getReserveData() {
         var result = this.cache.get("reserve_data");
@@ -81,7 +87,7 @@ export default class Fulcrum {
                         torqueBorrowInterestRate: torqueBorrowInterestRate.dividedBy(10 ** 18).toFixed(),
                         swapRates: swapRates[i],
                         lockedAssets: vaultBalance.dividedBy(10 ** 18).toFixed(),
-                        swapToUSDPrice: swapRates[i],
+                        swapToUSDPrice: new BigNumber(swapRates[i]).dividedBy(10 ** 18).toFixed(),
                         usdSupply: usdSupply.dividedBy(10 ** 18).toFixed(),
                         usdTotalLocked: usdTotalLocked.dividedBy(10 ** 18).toFixed(),
                     });

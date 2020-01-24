@@ -21,6 +21,11 @@ export default ({ config}) => {
 		var tvl = await fulcrum.getTVL();
 		res.json(tvl);
 	});
+	
+	api.get('/usd-rates', async (req, res) => {
+		var usdRates = await fulcrum.getUsdRates();
+		res.json(usdRates);
+	});
 
 	return api;
 }
