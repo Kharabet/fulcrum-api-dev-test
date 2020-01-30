@@ -11,7 +11,7 @@ export default class Fulcrum {
     constructor(web3, cache) {
         this.web3 = web3;
         this.cache = cache
-        this.cache.on( "expired", function( key, value ){
+        this.cache.on( "expired", async function( key, value ){
             if(key == "reserve_data")
             {
                 var result = await this.updateReservedData();
