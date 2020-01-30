@@ -11,6 +11,13 @@ export default class Fulcrum {
     constructor(web3, cache) {
         this.web3 = web3;
         this.cache = cache
+        this.cache.on( "expired", function( key, value ){
+            if(key == "reserve_data")
+            {
+                var result = await this.updateReservedData();
+                this.cache.set("reserve_data", result);
+            }
+        });
         // this.iTokenContract = new this.web3.eth.Contract(iTokenJson.abi, token.address);
         this.DappHeperContract = new this.web3.eth.Contract(DappHelperJson.abi, dappHelperAddress);
     }
@@ -41,64 +48,8 @@ export default class Fulcrum {
         if (!result) {
 
             console.warn("No reserve_data in cache!")
-            result = [];
-            var tokenAddresses = iTokens.map(x => (x.address));
-            var swapRates = await this.getSwapToUsdRateBatch(iTokens.find(x => x.name === "dai"));
-            var reserveData = await this.DappHeperContract.methods.reserveDetails(tokenAddresses).call();
-
-            let usdTotalLockedAll = new BigNumber(0);
-            let usdSupplyAll = new BigNumber(0);
-            if (reserveData && reserveData.totalAssetSupply.length > 0) {
-                iTokens.forEach((token, i) => {
-                    let totalAssetSupply = new BigNumber(reserveData.totalAssetSupply[i]);
-                    let totalAssetBorrow = new BigNumber(reserveData.totalAssetBorrow[i]);
-                    let supplyInterestRate = new BigNumber(reserveData.supplyInterestRate[i]);
-                    let borrowInterestRate = new BigNumber(reserveData.borrowInterestRate[i]);
-                    let torqueBorrowInterestRate = new BigNumber(reserveData.torqueBorrowInterestRate[i]);
-                    let vaultBalance = new BigNumber(reserveData.vaultBalance[i]);
-
-                    let marketLiquidity = totalAssetSupply.minus(totalAssetBorrow);
-
-                    const decimals = token.decimals;
-                    let usdSupply = new BigNumber(0);
-                    let usdTotalLocked = new BigNumber(0);
-
-                    const precision = new BigNumber(10 ** (18 - decimals));
-                    totalAssetSupply = totalAssetSupply.times(precision);
-                    totalAssetBorrow = totalAssetBorrow.times(precision);
-                    marketLiquidity = marketLiquidity.times(precision);
-                    vaultBalance = vaultBalance.times(precision);
-
-                    if (swapRates[i]) {
-                        usdSupply = totalAssetSupply.times(swapRates[i]).dividedBy(10 ** 18);
-                        usdSupplyAll = usdSupplyAll.plus(usdSupply);
-
-                        usdTotalLocked = marketLiquidity.plus(vaultBalance).times(swapRates[i]).dividedBy(10 ** 18);
-                        usdTotalLockedAll = usdTotalLockedAll.plus(usdTotalLocked);
-                    }
-
-                    result.push({
-                        token: token.name,
-                        liquidity: marketLiquidity.dividedBy(10 ** 18).toFixed(),
-                        totalSupply: totalAssetSupply.dividedBy(10 ** 18).toFixed(),
-                        totalBorrow: totalAssetBorrow.dividedBy(10 ** 18).toFixed(),
-                        supplyInterestRate: supplyInterestRate.dividedBy(10 ** 18).toFixed(),
-                        borrowInterestRate: borrowInterestRate.dividedBy(10 ** 18).toFixed(),
-                        torqueBorrowInterestRate: torqueBorrowInterestRate.dividedBy(10 ** 18).toFixed(),
-                        swapRates: swapRates[i],
-                        lockedAssets: vaultBalance.dividedBy(10 ** 18).toFixed(),
-                        swapToUSDPrice: new BigNumber(swapRates[i]).dividedBy(10 ** 18).toFixed(),
-                        usdSupply: usdSupply.dividedBy(10 ** 18).toFixed(),
-                        usdTotalLocked: usdTotalLocked.dividedBy(10 ** 18).toFixed(),
-                    });
-                });
-                result.push({
-                    token: "all",
-                    usdSupply: usdSupplyAll.dividedBy(10 ** 18).toFixed(),
-                    usdTotalLocked: usdTotalLockedAll.dividedBy(10 ** 18).toFixed()
-                })
-
-            }
+            result = await this.updateReservedData();
+            
             this.cache.set("reserve_data", result);
             console.dir(`reserve_data:`);
             console.dir(result);
@@ -106,7 +57,67 @@ export default class Fulcrum {
         return result;
     }
 
+    async updateReservedData(){
+        var result = [];
+        var tokenAddresses = iTokens.map(x => (x.address));
+        var swapRates = await this.getSwapToUsdRateBatch(iTokens.find(x => x.name === "dai"));
+        var reserveData = await this.DappHeperContract.methods.reserveDetails(tokenAddresses).call();
 
+        let usdTotalLockedAll = new BigNumber(0);
+        let usdSupplyAll = new BigNumber(0);
+        if (reserveData && reserveData.totalAssetSupply.length > 0) {
+            iTokens.forEach((token, i) => {
+                let totalAssetSupply = new BigNumber(reserveData.totalAssetSupply[i]);
+                let totalAssetBorrow = new BigNumber(reserveData.totalAssetBorrow[i]);
+                let supplyInterestRate = new BigNumber(reserveData.supplyInterestRate[i]);
+                let borrowInterestRate = new BigNumber(reserveData.borrowInterestRate[i]);
+                let torqueBorrowInterestRate = new BigNumber(reserveData.torqueBorrowInterestRate[i]);
+                let vaultBalance = new BigNumber(reserveData.vaultBalance[i]);
+
+                let marketLiquidity = totalAssetSupply.minus(totalAssetBorrow);
+
+                const decimals = token.decimals;
+                let usdSupply = new BigNumber(0);
+                let usdTotalLocked = new BigNumber(0);
+
+                const precision = new BigNumber(10 ** (18 - decimals));
+                totalAssetSupply = totalAssetSupply.times(precision);
+                totalAssetBorrow = totalAssetBorrow.times(precision);
+                marketLiquidity = marketLiquidity.times(precision);
+                vaultBalance = vaultBalance.times(precision);
+
+                if (swapRates[i]) {
+                    usdSupply = totalAssetSupply.times(swapRates[i]).dividedBy(10 ** 18);
+                    usdSupplyAll = usdSupplyAll.plus(usdSupply);
+
+                    usdTotalLocked = marketLiquidity.plus(vaultBalance).times(swapRates[i]).dividedBy(10 ** 18);
+                    usdTotalLockedAll = usdTotalLockedAll.plus(usdTotalLocked);
+                }
+
+                result.push({
+                    token: token.name,
+                    liquidity: marketLiquidity.dividedBy(10 ** 18).toFixed(),
+                    totalSupply: totalAssetSupply.dividedBy(10 ** 18).toFixed(),
+                    totalBorrow: totalAssetBorrow.dividedBy(10 ** 18).toFixed(),
+                    supplyInterestRate: supplyInterestRate.dividedBy(10 ** 18).toFixed(),
+                    borrowInterestRate: borrowInterestRate.dividedBy(10 ** 18).toFixed(),
+                    torqueBorrowInterestRate: torqueBorrowInterestRate.dividedBy(10 ** 18).toFixed(),
+                    swapRates: swapRates[i],
+                    lockedAssets: vaultBalance.dividedBy(10 ** 18).toFixed(),
+                    swapToUSDPrice: new BigNumber(swapRates[i]).dividedBy(10 ** 18).toFixed(),
+                    usdSupply: usdSupply.dividedBy(10 ** 18).toFixed(),
+                    usdTotalLocked: usdTotalLocked.dividedBy(10 ** 18).toFixed(),
+                });
+            });
+            result.push({
+                token: "all",
+                usdSupply: usdSupplyAll.dividedBy(10 ** 18).toFixed(),
+                usdTotalLocked: usdTotalLockedAll.dividedBy(10 ** 18).toFixed()
+            })
+
+        }
+        return result;
+    }
 
 
     getGoodSourceAmountOfAsset(assetName) {
