@@ -1,33 +1,83 @@
 import { iTokens } from '../config/iTokens';
+import { pTokens } from '../config/pTokens';
 
 import BigNumber from 'bignumber.js';
 import { DappHelperJson, mainnetAddress as dappHelperAddress } from './contracts/DappHelperContract'
-import { mainnetAddress as oracleAddress } from './contracts/OracleContract'
+import { mainnetAddress as oracleAddress, oracleJson } from './contracts/OracleContract'
 import { iTokenJson } from './contracts/iTokenContract';
+import { pTokenJson } from './contracts/pTokenContract';
 
-
+const UNLIMITED_ALLOWANCE_IN_BASE_UNITS = new BigNumber(2)
+    .pow(256)
+    .minus(1);
 
 export default class Fulcrum {
     constructor(web3, cache) {
         this.web3 = web3;
-        this.cache = cache
-        this.cache.on( "expired", async function( key, value ){
-            if(key == "reserve_data")
-            {
-                var result = await this.updateReservedData();
-                this.cache.set("reserve_data", result);
-            }
-        });
+        this.cache = cache;
+        this.cache.on("expired", this.setReserveData.bind(this));
         // this.iTokenContract = new this.web3.eth.Contract(iTokenJson.abi, token.address);
         this.DappHeperContract = new this.web3.eth.Contract(DappHelperJson.abi, dappHelperAddress);
     }
 
-    async getAPR() {
+    async setReserveData(key, value) {
+        if (key == "reserve_data") {
+            var result = await this.updateReservedData();
+            this.cache.set("reserve_data", result);
+        }
+    }
+
+    async getTotalAssetSupply() {
+        var reserveData = await this.getReserveData()
+        var totalAssetSupply = {};
+        reserveData.forEach(item => totalAssetSupply[item.token] = item.totalAssetSupply);
+
+        return totalAssetSupply;
+    }
+
+    async getTotalAssetBorrow() {
+        var reserveData = await this.getReserveData()
+        var totalAssetBorrow = {};
+        reserveData.forEach(item => totalAssetBorrow[item.token] = item.totalAssetBorrow);
+
+        return totalAssetBorrow;
+    }
+
+    async getSupplyRateAPR() {
         var reserveData = await this.getReserveData()
         var apr = {};
         reserveData.forEach(item => apr[item.token] = item.supplyInterestRate);
 
         return apr;
+    }
+
+    async getBorrowRateAPR() {
+        var reserveData = await this.getReserveData()
+        var apr = {};
+        reserveData.forEach(item => apr[item.token] = item.borrowInterestRate);
+
+        return apr;
+    }
+
+    async getTorqueBorrowRateAPR() {
+        var reserveData = await this.getReserveData()
+        var torqueBorrowRates = {};
+        reserveData.forEach(item => torqueBorrowRates[item.token] = item.torqueBorrowInterestRate);
+        return torqueBorrowRates;
+    }
+
+    async getVaultBalance() {
+        var reserveData = await this.getReserveData()
+        var vaultBalance = {};
+        reserveData.forEach(item => vaultBalance[item.token] = item.vaultBalance);
+        return vaultBalance;
+    }
+
+    async getFreeLiquidity() {
+        var reserveData = await this.getReserveData()
+        var freeLiquidity = {};
+        reserveData.forEach(item => freeLiquidity[item.token] = item.liquidity);
+        return freeLiquidity;
     }
 
     async getTVL() {
@@ -42,12 +92,103 @@ export default class Fulcrum {
         reserveData.forEach(item => usdRates[item.token] = item.swapToUSDPrice);
         return usdRates;
     }
-    async getTorqueBorrowRates() {
-        var reserveData = await this.getReserveData()
-        var torqueBorrowRates = {};
-        reserveData.forEach(item => torqueBorrowRates[item.token] = item.torqueBorrowInterestRate);
-        return torqueBorrowRates;
+
+    async getITokensPricesUsd() {
+        let result = {};
+        const usdRates = await this.getUsdRates();
+        for (const token in iTokens) {
+            const iToken = iTokens[token];
+            const iTokenContract = new this.web3.eth.Contract(iTokenJson.abi, iToken.address);
+            const tokenPrice = await iTokenContract.methods.tokenPrice().call();
+
+            //price is in loanAsset of iToken contract
+            const price = new BigNumber(tokenPrice).multipliedBy(usdRates[iToken.name]).dividedBy(10 ** iToken.decimals);
+            result[iToken.name] = price.toNumber();
+        }
+        return result;
     }
+
+    async getPTokensPricesUsd() {
+        let result = {};
+        const usdRates = await this.getUsdRates();
+        try {
+            for (const token in pTokens) {
+                const pToken = pTokens[token];
+                const pTokenContract = new this.web3.eth.Contract(pTokenJson.abi, pToken.address);
+                const tokenPrice = await pTokenContract.methods.tokenPrice().call({ from: "0x4abB24590606f5bf4645185e20C4E7B97596cA3B" });
+                const decimals = await pTokenContract.methods.decimals().call({ from: "0x4abB24590606f5bf4645185e20C4E7B97596cA3B" });
+                //price is in loanAsset of iToken contract
+                const baseAsset = this.getBaseAsset(pToken);
+                const swapPrice = await this.getSwapToUsdRate(baseAsset);
+                const price = new BigNumber(tokenPrice).multipliedBy(usdRates[pToken.asset.toLowerCase()]).dividedBy(10 ** decimals);
+                result[pToken.id] = price.toNumber();
+            }
+        }
+        catch (e) {
+            console.log(e);
+        }
+        return result;
+    }
+
+    getBaseAsset(pToken) {
+        return pToken.direction === "SHORT" ? pToken.unit : pToken.asset;
+
+    }
+
+    async getSwapToUsdRate(asset) {
+        if (asset === "SAI" || asset === "DAI" || asset === "USDC" || asset === "SUSD" || asset === "USDT") {
+            return new BigNumber(1);
+        }
+
+        /*const swapRates = await this.getSwapToUsdRateBatch(
+          [asset],
+          process.env.REACT_APP_ETH_NETWORK === "mainnet" ?
+            Asset.DAI :
+            Asset.SAI
+        );
+    
+        return swapRates[0];*/
+        return this.getSwapRate(
+            asset,
+            "DAI"
+        );
+    }
+
+    async getSwapRate(srcAsset, destAsset, srcAmount) {
+        if (srcAsset === destAsset) {
+            return new BigNumber(1);
+        }
+
+        let result = new BigNumber(0);
+
+        if (!srcAmount) {
+            srcAmount = UNLIMITED_ALLOWANCE_IN_BASE_UNITS;
+        } else {
+            srcAmount = new BigNumber(srcAmount.toFixed(0, 1));
+        }
+
+        const srcAssetErc20Address = iTokens.find(token => token.name === srcAsset.toLowerCase()).erc20Address;
+        const destAssetErc20Address = iTokens.find(token => token.name === destAsset.toLowerCase()).erc20Address;
+        if (srcAssetErc20Address && destAssetErc20Address) {
+            const oracleContract = new this.web3.eth.Contract(oracleJson.abi, oracleAddress);
+
+            try {
+                const swapPriceData = await oracleContract.methods.getTradeData(
+                    srcAssetErc20Address,
+                    destAssetErc20Address,
+                    srcAmount
+                ).call({ from: "0x4abB24590606f5bf4645185e20C4E7B97596cA3B" });
+                result = new BigNumber(swapPriceData[0]).dividedBy(10 ** 18);
+            } catch (e) {
+                console.log(e)
+                result = new BigNumber(0);
+            }
+        }
+
+
+        return result;
+    }
+
 
     async  getReserveData() {
         var result = this.cache.get("reserve_data");
@@ -55,7 +196,7 @@ export default class Fulcrum {
 
             console.warn("No reserve_data in cache!")
             result = await this.updateReservedData();
-            
+
             this.cache.set("reserve_data", result);
             console.dir(`reserve_data:`);
             console.dir(result);
@@ -63,11 +204,11 @@ export default class Fulcrum {
         return result;
     }
 
-    async updateReservedData(){
+    async updateReservedData() {
         var result = [];
         var tokenAddresses = iTokens.map(x => (x.address));
         var swapRates = await this.getSwapToUsdRateBatch(iTokens.find(x => x.name === "dai"));
-        var reserveData = await this.DappHeperContract.methods.reserveDetails(tokenAddresses).call({from: "0x4abB24590606f5bf4645185e20C4E7B97596cA3B"});
+        var reserveData = await this.DappHeperContract.methods.reserveDetails(tokenAddresses).call({ from: "0x4abB24590606f5bf4645185e20C4E7B97596cA3B" });
 
         let usdTotalLockedAll = new BigNumber(0);
         let usdSupplyAll = new BigNumber(0);
@@ -108,6 +249,7 @@ export default class Fulcrum {
                     supplyInterestRate: supplyInterestRate.dividedBy(10 ** 18).toFixed(),
                     borrowInterestRate: borrowInterestRate.dividedBy(10 ** 18).toFixed(),
                     torqueBorrowInterestRate: torqueBorrowInterestRate.dividedBy(10 ** 18).toFixed(),
+                    vaultBalance: vaultBalance.dividedBy(10 ** 18).toFixed(),
                     swapRates: swapRates[i],
                     lockedAssets: vaultBalance.dividedBy(10 ** 18).toFixed(),
                     swapToUSDPrice: new BigNumber(swapRates[i]).dividedBy(10 ** 18).toFixed(),
@@ -130,7 +272,7 @@ export default class Fulcrum {
         switch (assetName) {
             case "wbtc":
                 return new BigNumber(10 ** 6);
-            case "usdc":                
+            case "usdc":
                 return new BigNumber(10 ** 4);
             case "usdt":
                 return new BigNumber(10 ** 4);
@@ -145,10 +287,9 @@ export default class Fulcrum {
         const underlyings = iTokens.map(e => (e.erc20Address));
         const amounts = iTokens.map(e => (this.getGoodSourceAmountOfAsset(e.name).toFixed()));
 
-        result = await this.DappHeperContract.methods.assetRates(oracleAddress, usdTokenAddress, underlyings, amounts).call({from: "0x4abB24590606f5bf4645185e20C4E7B97596cA3B"});
+        result = await this.DappHeperContract.methods.assetRates(oracleAddress, usdTokenAddress, underlyings, amounts).call({ from: "0x4abB24590606f5bf4645185e20C4E7B97596cA3B" });
 
         return result;
     }
 
 }
-
