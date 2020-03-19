@@ -22,78 +22,108 @@ export default class Fulcrum {
 
     async setReserveData(key, value) {
         if (key == "reserve_data") {
-            var result = await this.updateReservedData();
+            const result = await this.updateReservedData();
             this.cache.set("reserve_data", result);
+            console.log("reserve_data updated");
+            return;
         }
+        if (key == "itoken-prices-usd") {
+            const result = await this.updateITokensPricesUsd();
+            this.cache.set("itoken-prices-usd", result);
+            console.log("itoken-prices-usd updated");
+            return;
+
+        }
+        if (key == "ptoken-prices-usd") {
+            const result = await this.updatePTokensPricesUsd();
+            this.cache.set("ptoken-prices-usd", result);
+            console.log("ptoken-prices-usd updated");
+            return;
+        }
+        console.log("nothing in cache")
     }
 
     async getTotalAssetSupply() {
-        var reserveData = await this.getReserveData()
-        var totalAssetSupply = {};
+        const reserveData = await this.getReserveData()
+        let totalAssetSupply = {};
         reserveData.forEach(item => totalAssetSupply[item.token] = item.totalSupply);
 
         return totalAssetSupply;
     }
 
     async getTotalAssetBorrow() {
-        var reserveData = await this.getReserveData()
-        var totalAssetBorrow = {};
+        const reserveData = await this.getReserveData()
+        let totalAssetBorrow = {};
         reserveData.forEach(item => totalAssetBorrow[item.token] = item.totalBorrow);
 
         return totalAssetBorrow;
     }
 
     async getSupplyRateAPR() {
-        var reserveData = await this.getReserveData()
-        var apr = {};
+        const reserveData = await this.getReserveData()
+        let apr = {};
         reserveData.forEach(item => apr[item.token] = item.supplyInterestRate);
 
         return apr;
     }
 
     async getBorrowRateAPR() {
-        var reserveData = await this.getReserveData()
-        var apr = {};
+        const reserveData = await this.getReserveData()
+        let apr = {};
         reserveData.forEach(item => apr[item.token] = item.borrowInterestRate);
 
         return apr;
     }
 
     async getTorqueBorrowRateAPR() {
-        var reserveData = await this.getReserveData()
-        var torqueBorrowRates = {};
+        const reserveData = await this.getReserveData()
+        let torqueBorrowRates = {};
         reserveData.forEach(item => torqueBorrowRates[item.token] = item.torqueBorrowInterestRate);
         return torqueBorrowRates;
     }
 
     async getVaultBalance() {
-        var reserveData = await this.getReserveData()
-        var vaultBalance = {};
+        const reserveData = await this.getReserveData()
+        let vaultBalance = {};
         reserveData.forEach(item => vaultBalance[item.token] = item.vaultBalance);
         return vaultBalance;
     }
 
     async getFreeLiquidity() {
-        var reserveData = await this.getReserveData()
-        var freeLiquidity = {};
+        const reserveData = await this.getReserveData()
+        let freeLiquidity = {};
         reserveData.forEach(item => freeLiquidity[item.token] = item.liquidity);
         return freeLiquidity;
     }
 
     async getTVL() {
-        var reserveData = await this.getReserveData()
-        var tvl = {};
+        const reserveData = await this.getReserveData()
+        let tvl = {};
         reserveData.forEach(item => tvl[item.token] = item.usdTotalLocked);
         return tvl;
     }
     async getUsdRates() {
-        var reserveData = await this.getReserveData()
-        var usdRates = {};
+        const reserveData = await this.getReserveData()
+        let usdRates = {};
         reserveData.forEach(item => usdRates[item.token] = item.swapToUSDPrice);
         return usdRates;
     }
 
     async getITokensPricesUsd() {
+        var result = this.cache.get("itoken-prices-usd");
+        if (!result) {
+
+            console.warn("No itoken-prices-usd in cache!")
+            result = await this.updateITokensPricesUsd();
+
+            this.cache.set("itoken-prices-usd", result);
+            // console.dir(`itoken-prices-usd:`);
+            // console.dir(result);
+        }
+        return result;
+    }
+
+    async updateITokensPricesUsd() {
         let result = {};
         const usdRates = await this.getUsdRates();
         for (const token in iTokens) {
@@ -103,12 +133,26 @@ export default class Fulcrum {
 
             //price is in loanAsset of iToken contract
             const price = new BigNumber(tokenPrice).multipliedBy(usdRates[iToken.name]).dividedBy(10 ** iToken.decimals);
-            result[iToken.name] = price.toNumber();
+            result[iToken.iTokenName.toLowerCase()] = price.toNumber();
         }
         return result;
     }
 
     async getPTokensPricesUsd() {
+        var result = this.cache.get("ptoken-prices-usd");
+        if (!result) {
+
+            console.warn("No ptoken-prices-usd in cache!")
+            result = await this.updatePTokensPricesUsd();
+
+            this.cache.set("ptoken-prices-usd", result);
+            // console.dir(`ptoken-prices-usd:`);
+            // console.dir(result);
+        }
+        return result;
+    }
+
+    async updatePTokensPricesUsd() {
         let result = {};
         const usdRates = await this.getUsdRates();
         try {
@@ -121,7 +165,7 @@ export default class Fulcrum {
                 const baseAsset = this.getBaseAsset(pToken);
                 const swapPrice = await this.getSwapToUsdRate(baseAsset);
                 const price = new BigNumber(tokenPrice).multipliedBy(usdRates[pToken.asset.toLowerCase()]).dividedBy(10 ** decimals);
-                result[pToken.id] = price.toNumber();
+                result[pToken.symbol.toLowerCase()] = price.toNumber();
             }
         }
         catch (e) {
@@ -198,8 +242,8 @@ export default class Fulcrum {
             result = await this.updateReservedData();
 
             this.cache.set("reserve_data", result);
-            console.dir(`reserve_data:`);
-            console.dir(result);
+            // console.dir(`reserve_data:`);
+            // console.dir(result);
         }
         return result;
     }
@@ -208,7 +252,7 @@ export default class Fulcrum {
         var result = [];
         var tokenAddresses = iTokens.map(x => (x.address));
         var swapRates = await this.getSwapToUsdRateBatch(iTokens.find(x => x.name === "dai"));
-        var reserveData = await this.DappHeperContract.methods.reserveDetails(tokenAddresses).call({ from: "0x4abB24590606f5bf4645185e20C4E7B97596cA3B" });
+        const reserveData = await this.DappHeperContract.methods.reserveDetails(tokenAddresses).call({ from: "0x4abB24590606f5bf4645185e20C4E7B97596cA3B" });
 
         let usdTotalLockedAll = new BigNumber(0);
         let usdSupplyAll = new BigNumber(0);
